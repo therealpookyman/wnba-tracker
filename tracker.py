@@ -27,8 +27,18 @@ def kalshi_tickers(sess, series):
     return out
 
 
+SERIES = ["KXWNBAGAME", "KXWNBA2HWINNER", "KXWNBA2HSPREAD", "KXWNBASPREAD"]
+
+
 def orderbook(sess, ticker, depth=5):
-    r = sess.get(f"{KAPI}/markets/{ticker}/orderbook", params={"depth": depth}, timeout=20)
+    import time as _t
+    for attempt in range(5):
+        r = sess.get(f"{KAPI}/markets/{ticker}/orderbook", params={"depth": depth}, timeout=20)
+        if r.status_code == 429:
+            _t.sleep(1.5 * (attempt + 1))
+            continue
+        break
+    _t.sleep(0.05)
     if r.status_code != 200:
         return None
     ob = r.json().get("orderbook_fp") or {}
@@ -68,15 +78,36 @@ def render_status(games):
     rows = []
     for (away, home), rs in by_game.items():
         last = rs[-1]
-        game_q, h2_q = [], []
+        game_q, h2_q, strikes = [], [], []
         for t, k in (last.get("kalshi") or {}).items():
             side = t.rsplit("-", 1)[1]
-            if side == "TIE":
-                continue
-            (game_q if t.startswith("KXWNBAGAME") else h2_q).append(f"{side} {fmt(k)}")
+            if t.startswith("KXWNBAGAME") and side != "TIE":
+                game_q.append(f"{side} {fmt(k)}")
+            elif t.startswith("KXWNBA2HWINNER") and side != "TIE":
+                h2_q.append(f"{side} {fmt(k)}")
+            elif t.startswith("KXWNBA2HSPREAD"):
+                strikes.append((side, k))
+        # key strike: the favorite's 2H handicap nearest 1.0x the pregame spread
+        key = "—"
+        sh = last.get("spread_home")
+        if sh is not None and strikes:
+            import re as _re
+            fav_code = None
+            fav_code = (home if sh < 0 else away)
+            best = None
+            for side, k in strikes:
+                m = _re.match(r"([A-Z]+?)(\d+)$", side)
+                if not m or not fav_code.startswith(m.group(1)[:2]):
+                    continue
+                gap = abs(int(m.group(2)) - abs(sh))
+                if best is None or gap < best[0]:
+                    best = (gap, side, k)
+            if best:
+                key = f"{best[1]} {fmt(best[2])}"
         rows.append(f"<tr><td>{away} @ {home}</td><td>{last['away_h1']}–{last['home_h1']}</td>"
                     f"<td>{last.get('spread_home')}</td><td>{len(rs)}</td>"
-                    f"<td class=m>{' · '.join(game_q) or '—'}</td><td class=m>{' · '.join(h2_q) or '—'}</td></tr>")
+                    f"<td class=m>{' · '.join(game_q) or '—'}</td><td class=m>{' · '.join(h2_q) or '—'}</td>"
+                    f"<td class=m>{key}</td></tr>")
     frows = [f"<tr><td>{r['away']} @ {r['home']}</td><td>{r['away_final']}–{r['home_final']}</td>"
              f"<td class=m>{r.get('away_q')} / {r.get('home_q')}</td></tr>" for r in finals]
     grows = [f"<tr><td>{g['away']} @ {g['home']}</td><td>{g['status']}</td><td>{g['detail']}</td></tr>" for g in games]
@@ -96,8 +127,8 @@ th{{font-size:11px;text-transform:uppercase;letter-spacing:.06em;opacity:.6}}
 <h3>Today's games</h3>
 <table><tr><th>Game</th><th>Status</th><th>Detail</th></tr>{''.join(grows) or '<tr><td colspan=3>none today</td></tr>'}</table>
 <h3>Halftime snapshots (latest per game — Kalshi yes bid/ask)</h3>
-<table><tr><th>Game</th><th>Half score</th><th>Home spread</th><th>#snaps</th><th>Game winner</th><th>2H winner</th></tr>
-{''.join(rows) or '<tr><td colspan=6>none yet</td></tr>'}</table>
+<table><tr><th>Game</th><th>Half score</th><th>Home spread</th><th>#snaps</th><th>Game winner</th><th>2H winner</th><th>2H spread @ ~1.0×</th></tr>
+{''.join(rows) or '<tr><td colspan=7>none yet</td></tr>'}</table>
 <h3>Finals logged</h3>
 <table><tr><th>Game</th><th>Final</th><th>Quarters (away / home)</th></tr>
 {''.join(frows) or '<tr><td colspan=3>none yet</td></tr>'}</table>
@@ -121,7 +152,7 @@ def run_once():
             rec = json.loads(line)
             if rec.get("type") == "final":
                 logged_finals.add(rec["espn_id"])
-    km_game = km_2h = None
+    km_game = None
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, "a") as out:
         for ev in events:
@@ -136,10 +167,9 @@ def run_once():
 
             if status == "STATUS_HALFTIME":
                 if km_game is None:
-                    km_game = kalshi_tickers(sess, "KXWNBAGAME")
-                    km_2h = kalshi_tickers(sess, "KXWNBA2HWINNER")
+                    km_game = {s: kalshi_tickers(sess, s) for s in SERIES}
                 ev_body = None
-                for t in km_game:
+                for t in km_game["KXWNBAGAME"]:
                     body = t.split("-")[1]
                     if body[7:] in (ka + kh, kh + ka):
                         ev_body = body
@@ -149,10 +179,9 @@ def run_once():
                        "away_h1": int(teams["away"]["score"]), "home_h1": int(teams["home"]["score"]),
                        "spread_home": pregame_spread(sess, eid), "kalshi": {}}
                 if ev_body:
-                    for series, km in (("KXWNBAGAME", km_game), ("KXWNBA2HWINNER", km_2h)):
-                        for code in (kh, ka, "TIE"):
-                            t = f"{series}-{ev_body}-{code}"
-                            if t in km:
+                    for series in SERIES:
+                        for t in sorted(km_game[series]):
+                            if t.split("-")[1] == ev_body:
                                 ob = orderbook(sess, t)
                                 if ob:
                                     rec["kalshi"][t] = ob
