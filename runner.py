@@ -4,7 +4,7 @@ import subprocess, sys, time
 from datetime import datetime, timezone
 import tracker
 
-WINDOW_MIN = 175          # max loop length per workflow run
+WINDOW_MIN = 55           # short windows + hourly crons: a skipped cron costs <1h
 POLL_SEC = 120
 COMMIT_EVERY = 5          # polls between commits
 

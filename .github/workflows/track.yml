@@ -2,11 +2,10 @@ name: wnba-tracker
 
 on:
   schedule:
-    # four ~3h windows covering 11:50 ET matinees through ~1am ET late games
-    - cron: '50 15 * * *'
-    - cron: '50 18 * * *'
-    - cron: '50 21 * * *'
-    - cron: '50 0 * * *'
+    # hourly ~55min windows, 11:50am ET matinees through ~2am ET late finishes;
+    # GitHub cron skips/delays are common, so windows overlap-queue for resilience
+    - cron: '50 15-23 * * *'
+    - cron: '50 0-5 * * *'
   workflow_dispatch:
 
 permissions:
@@ -19,7 +18,7 @@ concurrency:
 jobs:
   track:
     runs-on: ubuntu-latest
-    timeout-minutes: 185
+    timeout-minutes: 65
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
