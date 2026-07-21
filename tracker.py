@@ -61,6 +61,31 @@ def pregame_spread(sess, eid):
         return None
 
 
+def live_line(kalshi, home_kcode, away_kcode, series="KXWNBASPREAD"):
+    """Interpolated 50c crossing of a spread ladder -> live spread.
+    Returns signed line (positive = home favored by that many) or None."""
+    import re
+    pts = []  # (x, P(home margin > x))
+    for t, k in (kalshi or {}).items():
+        if not t.startswith(series + "-"):
+            continue
+        m = re.match(r"([A-Z]+?)(\d+)$", t.rsplit("-", 1)[1])
+        b, a = k.get("yes_bid"), k.get("yes_ask")
+        if not m or b is None or a is None:
+            continue
+        team, line, mid = m.group(1), int(m.group(2)) - 0.5, (b + a) / 2
+        if home_kcode.startswith(team):
+            pts.append((line, mid))
+        elif away_kcode.startswith(team):
+            pts.append((-line, 1 - mid))
+    pts.sort()
+    for (x1, p1), (x2, p2) in zip(pts, pts[1:]):
+        lo, hi = min(p1, p2), max(p1, p2)
+        if lo <= 0.5 <= hi and p1 != p2:
+            return round(x1 + (p1 - 0.5) / (p1 - p2) * (x2 - x1), 1)
+    return None
+
+
 def render_status(games):
     snaps, finals = [], []
     if os.path.exists(OUT):
@@ -104,8 +129,11 @@ def render_status(games):
                     best = (gap, side, k)
             if best:
                 key = f"{best[1]} {fmt(best[2])}"
+        kh, ka = E2K.get(home, home), E2K.get(away, away)
+        ll = live_line(last.get("kalshi"), kh, ka)
+        ll_txt = "—" if ll is None else (f"{home} −{abs(ll)}" if ll > 0 else f"{away} −{abs(ll)}")
         rows.append(f"<tr><td>{away} @ {home}</td><td>{last['away_h1']}–{last['home_h1']}</td>"
-                    f"<td>{last.get('spread_home')}</td><td>{len(rs)}</td>"
+                    f"<td>{last.get('spread_home')}</td><td class=m>{ll_txt}</td><td>{len(rs)}</td>"
                     f"<td class=m>{' · '.join(game_q) or '—'}</td><td class=m>{' · '.join(h2_q) or '—'}</td>"
                     f"<td class=m>{key}</td></tr>")
     frows = [f"<tr><td>{r['away']} @ {r['home']}</td><td>{r['away_final']}–{r['home_final']}</td>"
@@ -127,8 +155,8 @@ th{{font-size:11px;text-transform:uppercase;letter-spacing:.06em;opacity:.6}}
 <h3>Today's games</h3>
 <table><tr><th>Game</th><th>Status</th><th>Detail</th></tr>{''.join(grows) or '<tr><td colspan=3>none today</td></tr>'}</table>
 <h3>Halftime snapshots (latest per game — Kalshi yes bid/ask)</h3>
-<table><tr><th>Game</th><th>Half score</th><th>Home spread</th><th>#snaps</th><th>Game winner</th><th>2H winner</th><th>2H spread @ ~1.0×</th></tr>
-{''.join(rows) or '<tr><td colspan=7>none yet</td></tr>'}</table>
+<table><tr><th>Game</th><th>Half score</th><th>Pregame</th><th>Live line (50¢)</th><th>#snaps</th><th>Game winner</th><th>2H winner</th><th>2H spread @ ~1.0×</th></tr>
+{''.join(rows) or '<tr><td colspan=8>none yet</td></tr>'}</table>
 <h3>Finals logged</h3>
 <table><tr><th>Game</th><th>Final</th><th>Quarters (away / home)</th></tr>
 {''.join(frows) or '<tr><td colspan=3>none yet</td></tr>'}</table>
