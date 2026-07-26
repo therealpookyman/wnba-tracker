@@ -53,3 +53,6 @@
 {"type": "halftime_snapshot", "ts": "2026-07-26T01:30:23.123357+00:00", "espn_id": "401857320", "away": "SPO", "home": "COOP", "away_h1": 81, "home_h1": 64, "spread_home": 6.5, "kalshi": {}}
 {"type": "halftime_snapshot", "ts": "2026-07-26T01:32:23.978083+00:00", "espn_id": "401857320", "away": "SPO", "home": "COOP", "away_h1": 81, "home_h1": 64, "spread_home": 6.5, "kalshi": {}}
 {"type": "halftime_snapshot", "ts": "2026-07-26T01:34:24.686718+00:00", "espn_id": "401857320", "away": "SPO", "home": "COOP", "away_h1": 81, "home_h1": 64, "spread_home": 6.5, "kalshi": {}}
+{"type": "halftime_snapshot", "ts": "2026-07-26T01:36:26.527237+00:00", "espn_id": "401857320", "away": "SPO", "home": "COOP", "away_h1": 81, "home_h1": 64, "spread_home": null, "kalshi": {}}
+{"type": "halftime_snapshot", "ts": "2026-07-26T01:40:27.217875+00:00", "espn_id": "401857320", "away": "SPO", "home": "COOP", "away_h1": 81, "home_h1": 64, "spread_home": null, "kalshi": {}}
+{"type": "halftime_snapshot", "ts": "2026-07-26T01:44:27.946663+00:00", "espn_id": "401857320", "away": "SPO", "home": "COOP", "away_h1": 81, "home_h1": 64, "spread_home": null, "kalshi": {}}
