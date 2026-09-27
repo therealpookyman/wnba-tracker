@@ -659,3 +659,4 @@
 {"type": "final", "ts": "2026-09-25T05:28:31.671471+00:00", "espn_id": "401857218", "away": "GS", "home": "LA", "away_final": 76, "home_final": 75, "away_q": [15, 11, 20, 30], "home_q": [13, 22, 20, 20], "spread_home": 10.5}
 {"type": "final", "ts": "2026-09-25T05:28:31.671471+00:00", "espn_id": "401857219", "away": "LV", "home": "PHX", "away_final": 100, "home_final": 82, "away_q": [32, 33, 12, 23], "home_q": [18, 18, 24, 22], "spread_home": 9.5}
 {"type": "final", "ts": "2026-09-27T20:08:37.271748+00:00", "espn_id": "401918014", "away": "NY", "home": "MIN", "away_final": 91, "home_final": 75, "away_q": [25, 15, 25, 26], "home_q": [18, 26, 16, 15], "spread_home": 13.5}
+{"type": "final", "ts": "2026-09-27T22:35:34.081648+00:00", "espn_id": "401918015", "away": "IND", "home": "LV", "away_final": 85, "home_final": 102, "away_q": [23, 24, 18, 20], "home_q": [27, 35, 24, 16], "spread_home": -4.5}
